@@ -32,38 +32,20 @@ The solution uses a locally hosted LLM through Ollama, reducing dependence on ex
 | Git & GitHub | Version control and project hosting |
 | VS Code | Development environment |
 
-## Architecture
+## ## Architecture
 
-The current prototype follows this workflow:
+The following infographic illustrates the solution architecture, technology stack, AI tool-calling workflow, implemented features, and future enhancements.
 
-```text
-Customer Query
-      |
-      v
-Python AI Agent
-      |
-      v
-Ollama - Qwen3 4B
-      |
-      v
-LLM Tool Calling
-      |
-      v
-Python Tool Dispatcher
-      |
-      v
-Order Status Function
-      |
-      v
-Sample Order Data
-      |
-      v
-Tool Result Returned to LLM
-      |
-      v
-Customer-Friendly Response
-```
+![Customer Support AI Agent Architecture](Assets/customer-support-ai-agent-architecture.png)
 
+### AI Agent Workflow
+
+1. Customer submits an enquiry.
+2. Qwen3 4B interprets the request.
+3. The LLM identifies the required Python tool.
+4. Python executes the requested business function.
+5. The tool result is returned to the LLM.
+6. The AI generates a natural-language response.
 ## Implemented Features
 
 ### 1. Local LLM Integration
