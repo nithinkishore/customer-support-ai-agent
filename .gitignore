@@ -1,6 +1,10 @@
-.venv/
+# Python
 __pycache__/
-*.pyc
-.env
+*.py[cod]
+.venv/
+
+# Local databases
 *.db
-.vscode/
+
+# Environment variables
+.env
