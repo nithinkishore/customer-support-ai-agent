@@ -1,8 +1,9 @@
 import json
+import os
 from datetime import datetime
 
 import streamlit as st
-from ollama import Client
+from openai import OpenAI
 
 from app.agent.auth import login_customer, register_customer
 from app.agent.tools import check_order_status
@@ -12,6 +13,7 @@ from app.database.chat_repository import (
     get_conversation_messages,
     get_all_conversations,
 )
+from app.database.init_db import initialize_database
 
 
 # -----------------------------------------
@@ -23,6 +25,9 @@ st.set_page_config(
     page_icon="🤖",
     layout="centered",
 )
+
+# Create required database tables before authentication or registration.
+initialize_database()
 
 
 # -----------------------------------------
@@ -125,8 +130,37 @@ if not st.session_state.get("authenticated", False):
 # 3. OLLAMA CONNECTION AND MODEL
 # -----------------------------------------
 
-client = Client(host="http://localhost:11434")
-MODEL = "qwen3:4b"
+def get_ai_client():
+    """Use Ollama Cloud on Streamlit Community Cloud; use local Ollama otherwise."""
+    api_key = os.getenv("OLLAMA_API_KEY")
+
+    if not api_key:
+        try:
+            api_key = st.secrets["OLLAMA_API_KEY"]
+        except Exception:
+            api_key = None
+
+    if api_key:
+        return (
+            OpenAI(
+                base_url="https://ollama.com/v1",
+                api_key=api_key,
+            ),
+            "deepseek-v4.1-flash",
+            "Ollama Cloud",
+        )
+
+    return (
+        OpenAI(
+            base_url="http://localhost:11434/v1",
+            api_key="ollama",
+        ),
+        "qwen3:4b",
+        "Local Ollama",
+    )
+
+
+client, MODEL, MODEL_PROVIDER = get_ai_client()
 customer_id = st.session_state.customer_id
 customer_name = st.session_state.customer_name
 
@@ -252,7 +286,7 @@ elif "messages" not in st.session_state:
 # -----------------------------------------
 
 st.title("🤖 Customer Support AI Assistant")
-st.caption("Powered by Qwen3 4B | Ollama | Python | SQLite")
+st.caption(f"Powered by {MODEL} | {MODEL_PROVIDER} | Python | SQLite")
 st.markdown(
     f"Welcome, **{customer_name}**! Ask me about your order status "
     "or any general customer support question."
@@ -266,8 +300,9 @@ st.markdown(
 with st.sidebar:
     st.header("Customer Support")
     st.write(f"Signed in as: **{customer_name}**")
-    st.write("AI Assistant: Online")
-    st.write("Model: Qwen3 4B")
+    st.write("AI Assistant: Connected")
+    st.write(f"Provider: {MODEL_PROVIDER}")
+    st.write(f"Model: {MODEL}")
     st.write("Database: SQLite")
 
     if st.button("Logout", use_container_width=True):
@@ -362,14 +397,33 @@ if user_input:
     with st.chat_message("assistant"):
         with st.spinner("AI is processing your request..."):
             try:
-                response = client.chat(
+                response = client.chat.completions.create(
                     model=MODEL,
                     messages=st.session_state.messages,
                     tools=tools,
                 )
 
-                st.session_state.messages.append(response.message)
-                tool_calls = response.message.tool_calls or []
+                response_message = response.choices[0].message
+                tool_calls = response_message.tool_calls or []
+
+                # Store the assistant tool-call message in OpenAI-compatible format.
+                assistant_tool_message = {
+                    "role": "assistant",
+                    "content": response_message.content,
+                }
+                if tool_calls:
+                    assistant_tool_message["tool_calls"] = [
+                        {
+                            "id": tool_call.id,
+                            "type": "function",
+                            "function": {
+                                "name": tool_call.function.name,
+                                "arguments": tool_call.function.arguments,
+                            },
+                        }
+                        for tool_call in tool_calls
+                    ]
+                st.session_state.messages.append(assistant_tool_message)
 
                 # ---------------------------------
                 # 14. EXECUTE REQUESTED TOOLS
@@ -378,7 +432,7 @@ if user_input:
                 if tool_calls:
                     for tool_call in tool_calls:
                         tool_name = tool_call.function.name
-                        arguments = tool_call.function.arguments
+                        arguments = json.loads(tool_call.function.arguments or "{}")
                         result = execute_tool(
                             tool_name,
                             arguments,
@@ -387,7 +441,7 @@ if user_input:
 
                         tool_message = {
                             "role": "tool",
-                            "name": tool_name,
+                            "tool_call_id": tool_call.id,
                             "content": json.dumps(result),
                         }
                         st.session_state.messages.append(tool_message)
@@ -396,17 +450,23 @@ if user_input:
                     # 15. GENERATE FINAL AI RESPONSE
                     # ---------------------------------
 
-                    final_response = client.chat(
+                    final_response = client.chat.completions.create(
                         model=MODEL,
                         messages=st.session_state.messages,
                     )
-                    st.session_state.messages.append(final_response.message)
-                    answer = final_response.message.content or (
-                        "I could not generate a response."
+                    answer = (
+                        final_response.choices[0].message.content
+                        or "I could not generate a response."
+                    )
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": answer}
                     )
                 else:
-                    answer = response.message.content or (
+                    answer = response_message.content or (
                         "I could not generate a response."
+                    )
+                    st.session_state.messages.append(
+                        {"role": "assistant", "content": answer}
                     )
 
                 save_message(
@@ -421,5 +481,5 @@ if user_input:
                 st.error(f"Something went wrong: {error}")
                 st.caption(
                     "Your customer message was saved. "
-                    "Please check that Ollama is running and try again."
+                    "Please check your Ollama connection and API configuration, then try again."
                 )
