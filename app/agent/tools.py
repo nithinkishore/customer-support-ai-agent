@@ -3,24 +3,34 @@ from app.database.connection import SessionLocal
 from app.database.models import Order
 
 
-def check_order_status(order_id: str):
+def check_order_status(order_id: str, customer_id: int):
     """
-    Retrieve order details from SQLite using SQLAlchemy.
+    Retrieve order details only when the order belongs
+    to the authenticated customer.
     """
+
+    if customer_id is None:
+        return {
+            "success": False,
+            "message": "Authentication required."
+        }
 
     db = SessionLocal()
 
     try:
         order = (
             db.query(Order)
-            .filter(Order.order_id == order_id)
+            .filter(
+                Order.order_id == order_id,
+                Order.customer_id == customer_id
+            )
             .first()
         )
 
         if order is None:
             return {
                 "success": False,
-                "message": f"No order found with ID {order_id}"
+                "message": "Order not found or you do not have permission to access it."
             }
 
         return {

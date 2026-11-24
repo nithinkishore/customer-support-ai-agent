@@ -2,60 +2,25 @@
 import json
 from ollama import Client
 
+# Import the database-backed business function
+from app.agent.tools import check_order_status
+
+
 # 1. Connect to local AI model
 client = Client(
     host="http://localhost:11434"
 )
 
-# 2. Sample business database
-orders = {
-    "ORD1001": {
-        "customer": "John",
-        "product": "Laptop",
-        "status": "Shipped"
-    },
-    "ORD1002": {
-        "customer": "Sarah",
-        "product": "Mobile",
-        "status": "Delivered"
-    },
-    "ORD1003": {
-        "customer": "David",
-        "product": "Headphones",
-        "status": "Processing"
-    }
-}
 
-
-# 3. Business tool
-def check_order_status(order_id: str):
-
-    order = orders.get(order_id)
-
-    if order is None:
-        return {
-            "success": False,
-            "message": "Order not found."
-        }
-
-    return {
-        "success": True,
-        "order_id": order_id,
-        "customer": order["customer"],
-        "product": order["product"],
-        "status": order["status"]
-    }
-
-
-# 4. Tool schema provided to Qwen3
+# 2. Define tool schema for Qwen3
 tools = [
     {
         "type": "function",
         "function": {
             "name": "check_order_status",
             "description": (
-                "Retrieve the actual status of an "
-                "order from the business database. "
+                "Retrieve actual order information "
+                "from the SQLite business database. "
                 "Use this tool whenever a customer "
                 "asks about a specific order."
             ),
@@ -74,10 +39,11 @@ tools = [
 ]
 
 
-# 5. Python tool dispatcher
+# 3. Python tool dispatcher
 def execute_tool(name, arguments):
 
     if name == "check_order_status":
+
         return check_order_status(
             arguments["order_id"]
         )
@@ -88,7 +54,7 @@ def execute_tool(name, arguments):
     }
 
 
-# 6. Agent instructions
+# 4. Agent instructions
 messages = [
     {
         "role": "system",
@@ -109,21 +75,20 @@ messages = [
     },
     {
         "role": "user",
-        "content": (
-            "Please check my order ORD1001."
-        )
+        "content": "Please check my order ORD1002."
     }
 ]
 
 
-# 7. Ask Qwen3 to process the request
+# 5. Ask Qwen3 to process the request
 response = client.chat(
     model="qwen3:4b",
     messages=messages,
     tools=tools
 )
 
-# 8. Process tool calls
+
+# 6. Process tool calls
 messages.append(response.message)
 
 tool_calls = response.message.tool_calls or []
@@ -138,7 +103,6 @@ else:
     for tool_call in tool_calls:
 
         tool_name = tool_call.function.name
-
         arguments = tool_call.function.arguments
 
         print("\nAI REQUESTED TOOL:")
@@ -147,23 +111,24 @@ else:
         print("\nTOOL ARGUMENTS:")
         print(arguments)
 
-        # Execute the Python function
+        # Execute SQLite database lookup
         result = execute_tool(
             tool_name,
             arguments
         )
 
-        print("\nACTUAL DATABASE RESULT:")
+        print("\nSQLITE DATABASE RESULT:")
         print(result)
 
-        # Return result to Qwen3
+        # Return database result to Qwen3
         messages.append({
             "role": "tool",
             "name": tool_name,
             "content": json.dumps(result)
         })
 
-    # 9. Ask Qwen3 for the final response
+
+    # 7. Generate final customer response
     final_response = client.chat(
         model="qwen3:4b",
         messages=messages
