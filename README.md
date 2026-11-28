@@ -1,71 +1,133 @@
 # Customer Support AI Agent
 
-An AI-powered customer support agent built using **Python, Ollama, and Qwen3 4B**. This project demonstrates how a locally hosted Large Language Model (LLM) can interact with Python business functions through tool calling to handle customer enquiries.
+An AI-powered, multi-user customer support application built using **Python, Streamlit, Ollama, Qwen3 4B, SQLite and Retrieval-Augmented Generation (RAG)**.
 
-The current prototype supports order-status enquiries using a Python-based tool and sample order data.
+The application combines a locally hosted Large Language Model (LLM), Python business functions, persistent customer data and a policy knowledge base to handle customer enquiries such as order tracking, returns, refunds, delivery and cancellation policies.
+
+The project demonstrates how Generative AI and agentic workflows can be integrated with application logic, database operations and knowledge retrieval to build a practical customer-support solution.
 
 ## Project Overview
 
-Customer support teams frequently handle repetitive enquiries such as order tracking and delivery updates. This project explores how an AI agent can understand a customer request, identify the appropriate business function, execute it, and return a natural-language response.
+Customer support teams frequently handle repetitive enquiries involving order status, delivery updates, returns and refunds.
 
-The solution uses a locally hosted LLM through Ollama, reducing dependence on external LLM APIs during development.
+This project provides an AI-powered interface where customers can authenticate, ask questions in natural language, retrieve order information and receive answers grounded in the available customer-support knowledge base.
 
-## Project Objectives
+The application uses Ollama for LLM execution, SQLite for persistent data and ChromaDB for vector-based knowledge retrieval.
 
-- Build a beginner-friendly AI customer support agent.
-- Integrate a locally hosted LLM using Ollama.
-- Implement LLM tool calling with Python.
-- Connect AI-generated tool requests to deterministic business functions.
-- Validate customer order IDs and handle invalid requests.
-- Establish a modular foundation for future database integration and advanced agent capabilities.
+## Key Features
+
+### 1. Local LLM Integration
+- Integrates Qwen3 4B through Ollama.
+- Connects the Python application to the local model.
+- Supports natural-language customer interactions.
+- Includes an optional Ollama Cloud configuration.
+
+### 2. Customer Authentication and Security
+- Customer registration and login.
+- Authenticated customer sessions.
+- Customer-specific data access.
+- Conversation ownership validation.
+- Order lookup authorization to prevent cross-customer access.
+
+### 3. Order Management and Tool Calling
+- Integrates LLM tool calling with Python business functions.
+- Uses a Python dispatcher to execute predefined tools.
+- Retrieves order information from the SQLite database.
+- Validates order IDs.
+- Checks customer-to-order ownership before returning order information.
+
+### 4. Persistent Database Integration
+- SQLite database for application data.
+- SQLAlchemy-based database models and operations.
+- Persistent customer and order records.
+- Persistent conversation and message history.
+
+### 5. Retrieval-Augmented Generation (RAG)
+- Uses ChromaDB as the vector database.
+- Uses Sentence Transformers (`all-MiniLM-L6-v2`) for text embeddings.
+- Loads customer-support policies from a Markdown knowledge-base document.
+- Splits policy content into searchable chunks.
+- Retrieves relevant information based on customer questions.
+- Uses document fingerprinting to avoid unnecessary re-indexing when the source document has not changed.
+- Caches the embedding model for reuse.
+
+### 6. Policy-Grounded Customer Support
+The knowledge base currently covers:
+
+- Order tracking
+- Delivery policy
+- Return policy
+- Refund policy
+- Cancellation policy
+- Customer support escalation
+
+The assistant is instructed not to invent unsupported policy details. When the knowledge base does not contain the requested information, it directs customers to human support.
+
+### 7. Streamlit Customer Interface
+- Interactive customer-support chat interface.
+- Login and registration workflow.
+- Customer session management.
+- Conversation history.
+- New conversation functionality.
+- Order-related enquiries.
+- AI provider and model information in the interface.
 
 ## Technology Stack
 
 | Technology | Purpose |
 |---|---|
 | Python | Application development |
+| Streamlit | Customer-facing interface |
 | Ollama | Local LLM execution |
 | Qwen3 4B | Language model |
-| Ollama Python SDK | Python-to-Ollama integration |
-| SQLAlchemy | Database integration foundation |
+| Ollama Python SDK | Model integration |
+| SQLite | Persistent data storage |
+| SQLAlchemy | Database models and operations |
+| ChromaDB | Vector database |
+| Sentence Transformers | Text embeddings |
+| all-MiniLM-L6-v2 | Embedding model |
+| RAG | Knowledge retrieval and grounded responses |
 | Pydantic | Data validation support |
-| Git & GitHub | Version control and project hosting |
+| Git & GitHub | Version control |
 | VS Code | Development environment |
 
-## ## Architecture
+## Application Architecture
 
-The following infographic illustrates the solution architecture, technology stack, AI tool-calling workflow, implemented features, and future enhancements.
+The application follows a modular architecture:
 
-![Customer Support AI Agent Architecture](Assets/customer-support-ai-agent-architecture.png)
+1. **Presentation Layer:** Streamlit interface for customer interaction.
+2. **Authentication Layer:** Registration, login and session management.
+3. **Agent Layer:** LLM interaction, Python tools and business-function execution.
+4. **Database Layer:** SQLite persistence, customer records, orders and conversations.
+5. **Knowledge Retrieval Layer:** ChromaDB indexing, embeddings and policy retrieval.
+6. **LLM Layer:** Ollama and Qwen3 4B for natural-language understanding and response generation.
 
-### AI Agent Workflow
+## AI Agent Workflow
 
-1. Customer submits an enquiry.
-2. Qwen3 4B interprets the request.
-3. The LLM identifies the required Python tool.
-4. Python executes the requested business function.
-5. The tool result is returned to the LLM.
-6. The AI generates a natural-language response.
-## Implemented Features
+### Order Enquiry Workflow
 
-### 1. Local LLM Integration
-- Runs Qwen3 4B locally through Ollama.
-- Connects Python to Ollama using the Ollama SDK.
-- Tests model connectivity and response generation.
+1. Customer logs in and submits an order enquiry.
+2. The application identifies the authenticated customer.
+3. Qwen3 4B interprets the request.
+4. The LLM requests the appropriate Python tool.
+5. Python executes the order lookup function.
+6. Customer ownership and order authorization are validated.
+7. The tool returns the verified order information.
+8. The LLM generates a customer-friendly response.
 
-### 2. AI Tool Calling
-- Enables the LLM to request a predefined Python function.
-- Extracts the requested function name and arguments.
-- Uses a Python dispatcher to execute the corresponding function.
-- Returns tool results for the LLM to formulate a response.
+### Knowledge-Base Question Workflow
 
-### 3. Order Status Lookup
-- Implements an order-status lookup function.
-- Uses sample in-memory order data.
-- Tests valid and invalid order IDs.
-- Returns appropriate results for supported order enquiries.
+1. Customer submits a policy-related question.
+2. The question is processed by the RAG retrieval workflow.
+3. Sentence Transformers generate the query embedding.
+4. ChromaDB retrieves relevant policy information.
+5. Retrieved knowledge is provided to the LLM.
+6. The LLM generates a response grounded in the available policy.
+7. If the knowledge base does not contain the answer, the customer is directed to human support.
 
 ## Project Structure
+
+The project is organized into modular application components. The following represents the main structure; individual test and migration files may evolve as development continues.
 
 ```text
 customer-support-ai-agent/
@@ -73,23 +135,36 @@ customer-support-ai-agent/
 ├── app/
 │   ├── agent/
 │   │   ├── __init__.py
+│   │   ├── auth.py
 │   │   └── tools.py
 │   │
 │   ├── database/
 │   │   ├── __init__.py
+│   │   ├── chat_repository.py
 │   │   ├── connection.py
-│   │   └── models.py
+│   │   ├── init_db.py
+│   │   ├── models.py
+│   │   └── seed_db.py
 │   │
-│   └── __init__.py
+│   └── rag/
+│       ├── __init__.py
+│       └── knowledge_base.py
 │
-├── test_ollama.py
-├── test_order_tool.py
-├── test_agent_tool_calling.py
+├── Knowledge_Base/
+│   └── support_policies.md
 │
+├── Assets/
+│
+├── streamlit_app.py
+├── interactive_agent.py
 ├── requirements.txt
 ├── .gitignore
-└── README.md
+├── README.md
+│
+└── test_*.py
 ```
+
+Generated local database and vector-index files are excluded from Git using `.gitignore`.
 
 ## Installation and Setup
 
@@ -110,7 +185,7 @@ cd customer-support-ai-agent
 
 ### Step 2: Create a Virtual Environment
 
-Windows:
+Windows PowerShell:
 
 ```powershell
 python -m venv .venv
@@ -124,88 +199,131 @@ python -m venv .venv
 pip install -r requirements.txt
 ```
 
-### Step 4: Install and Run Ollama
+### Step 4: Install Ollama
 
 Download Ollama:
 
 https://ollama.com/download
 
-Download the Qwen3 4B model:
+Pull the Qwen3 4B model:
 
 ```bash
 ollama pull qwen3:4b
 ```
 
-Ensure Ollama is running locally before executing the Python scripts.
+Ensure Ollama is running locally before launching the application.
 
-### Step 5: Execute the Test Scripts
-
-Test Ollama connectivity:
+### Step 5: Launch the Application
 
 ```bash
-python test_ollama.py
+streamlit run streamlit_app.py
 ```
 
-Test the order lookup function:
+Open the application in your browser:
 
-```bash
-python test_order_tool.py
+```text
+http://localhost:8501
 ```
 
-Test AI tool calling:
+Register a customer account or log in to begin interacting with the assistant.
 
-```bash
-python test_agent_tool_calling.py
+The database initialization and knowledge-base indexing are handled by the application initialization workflow.
+
+## Knowledge Base Configuration
+
+The current policy document is:
+
+```text
+Knowledge_Base/support_policies.md
 ```
 
-## Testing
+It contains the policies used by the RAG workflow.
 
-The current prototype has been tested for:
+To update the customer-support policies:
 
-| Test Scenario | Expected Behaviour |
+1. Edit `support_policies.md`.
+2. Save the document.
+3. Restart or refresh the application as required.
+4. The indexing workflow checks the document fingerprint and re-indexes when the source changes.
+
+The assistant should not invent policy details that are absent from the knowledge base.
+
+## Testing and Validation
+
+The application has been tested through customer interactions and individual component tests.
+
+| Test Area | Validation |
 |---|---|
-| Ollama connectivity | Successful local model connection |
-| Valid order ID | Returns the matching sample order information |
-| Invalid order ID | Handles an unknown order ID |
-| AI tool request | Identifies the requested Python function |
-| Tool execution | Dispatches the function and returns its result |
+| Ollama integration | Local model connectivity and response generation |
+| Authentication | Registration and login |
+| Order lookup | Valid and invalid order IDs |
+| Order security | Customer ownership validation |
+| Database | Initialization and persistent records |
+| Chat history | Conversation and message persistence |
+| RAG | Policy indexing and retrieval |
+| Return policy | Correct retrieval of return conditions |
+| Refund policy | Correct retrieval of refund timelines |
+| Delivery policy | Retrieval of standard delivery information |
+| Unsupported policy | Human-support fallback for warranty questions |
+
+## Performance Observations
+
+Response times vary depending on model initialization, hardware resources, query complexity and retrieval operations.
+
+During local testing, the following response times were observed:
+
+- Return-policy question: approximately 6–12 seconds in separate tests.
+- Refund-policy question: approximately 5–6 seconds in separate tests.
+- Unsupported warranty question: less than 1 second in one test.
+
+These are individual observations, not formal benchmark results or guaranteed response times.
 
 ## Current Scope and Limitations
 
-This is an evolving prototype and not yet a production-ready customer support platform.
+The current application is a working local prototype and is not yet a production-ready customer-support platform.
 
-Current implementation:
+Implemented:
 - Local LLM integration.
-- Python-based tool calling.
-- Order-status lookup using sample in-memory data.
-- Basic validation and test scenarios.
+- Customer authentication.
+- SQLite database persistence.
+- Conversation and message history.
+- Customer-specific order authorization.
+- Python tool calling.
+- RAG-based policy retrieval.
+- ChromaDB vector indexing.
+- Streamlit customer interface.
+- Unsupported-policy fallback.
 
-Not yet implemented:
-- Persistent database-backed order management.
-- Customer authentication and authorization.
-- Retrieval-Augmented Generation (RAG).
-- Multi-agent orchestration.
-- Web-based customer interface.
-- Production deployment, monitoring, and security controls.
+Not yet established as production capabilities:
+- Public cloud deployment.
+- Production-grade monitoring and observability.
+- Formal load and scalability testing.
+- Comprehensive security audit.
+- Production integrations with external order-management systems.
+- Multi-agent orchestration using LangGraph.
 
 ## Future Enhancements
 
-1. Integrate SQLite or PostgreSQL for persistent order data.
-2. Build a customer-facing interface using Streamlit or FastAPI.
-3. Add RAG for FAQs, product documentation, and support knowledge bases.
-4. Introduce LangGraph for more advanced agent workflows.
-5. Add customer authentication and role-based access control.
-6. Implement logging, monitoring, and evaluation.
-7. Deploy the application as a secure customer support service.
+1. Introduce specialized agents for order management, returns and refunds.
+2. Implement LangGraph-based agent orchestration.
+3. Add human-agent handoff and escalation management.
+4. Integrate external CRM and order-management systems.
+5. Add advanced evaluation for RAG retrieval quality and LLM response accuracy.
+6. Introduce application monitoring, logging and analytics.
+7. Implement secure cloud deployment.
+8. Add an administrative dashboard for customer-support operations.
 
 ## Business Value
 
 The project demonstrates how AI agents can support business operations by:
 
 - Automating repetitive customer enquiries.
-- Connecting natural-language requests to business functions.
-- Reducing manual effort for routine support tasks.
-- Providing a foundation for scalable AI-enabled customer service workflows.
+- Connecting natural-language requests to deterministic business functions.
+- Providing policy-grounded customer responses.
+- Maintaining customer-specific conversation history.
+- Protecting access to customer and order information.
+- Reducing manual effort for routine support activities.
+- Establishing a modular foundation for enterprise AI customer-service solutions.
 
 ## Author
 
@@ -217,6 +335,8 @@ LinkedIn: https://www.linkedin.com/in/nithinkishorers
 
 GitHub: https://github.com/nithinkishore
 
+Project Repository: https://github.com/nithinkishore/customer-support-ai-agent
+
 ---
 
-*This project is being developed as a practical learning and portfolio initiative to demonstrate the application of Generative AI and agentic workflows to real-world business processes.*
+*This project is being developed as a practical portfolio initiative to demonstrate the application of Generative AI, Retrieval-Augmented Generation and agentic workflows to real-world business processes.*
